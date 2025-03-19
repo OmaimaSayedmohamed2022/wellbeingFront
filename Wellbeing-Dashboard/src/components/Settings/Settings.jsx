@@ -621,7 +621,7 @@ const [associationMembershipFile, setAssociationMembershipFile] = useState(null)
     };
   
     try {
-      const response = await fetch("https://scopey.onrender.com/api/beneficiaries/register/beneficiary", {
+      const response = await fetch("https://wellbeingproject.onrender.com/api/beneficiaries/register/beneficiary", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
