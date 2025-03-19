@@ -274,7 +274,7 @@ const Navbar = () => {
   
           {/* Notifications Panel */}
           {showNotifications && (
-            <div className="absolute top-full right-0 mt-2 w-80 bg-white rounded-[20px] shadow-lg z-50 max-h-[300px] overflow-y-auto notifications-panel">
+            <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-[20px] shadow-lg z-50 max-h-[300px] overflow-y-auto notifications-panel">
               <div className="p-4">
                 <h3 className="text-lg font-bold text-[#1F77BC] mb-4">الإشعارات</h3>
                 {notifications.length > 0 ? (

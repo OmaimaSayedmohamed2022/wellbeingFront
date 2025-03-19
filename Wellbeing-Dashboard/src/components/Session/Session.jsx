@@ -75,10 +75,201 @@ function SpecialistCard({ spec, showActions, onCancel, onAccept }) {
       return;
     }
 
-    const countryCodeMap = {
-      لبنان: "+961",
-      مصر: "+20",
-      // Add other nationalities as needed
+    const countryCodes = {
+      "أفغانستان": "+93", // Afghanistan
+      "ألبانيا": "+355", // Albania
+      "الجزائر": "+213", // Algeria
+      "أندورا": "+376", // Andorra
+      "أنغولا": "+244", // Angola
+      "أنتيغوا وباربودا": "+1-268", // Antigua and Barbuda
+      "الأرجنتين": "+54", // Argentina
+      "أرمينيا": "+374", // Armenia
+      "أستراليا": "+61", // Australia
+      "النمسا": "+43", // Austria
+      "أذربيجان": "+994", // Azerbaijan
+      "البهاما": "+1-242", // Bahamas
+      "البحرين": "+973", // Bahrain
+      "بنغلاديش": "+880", // Bangladesh
+      "باربادوس": "+1-246", // Barbados
+      "بيلاروسيا": "+375", // Belarus
+      "بلجيكا": "+32", // Belgium
+      "بليز": "+501", // Belize
+      "بنين": "+229", // Benin
+      "بوتان": "+975", // Bhutan
+      "بوليفيا": "+591", // Bolivia
+      "البوسنة والهرسك": "+387", // Bosnia and Herzegovina
+      "بوتسوانا": "+267", // Botswana
+      "البرازيل": "+55", // Brazil
+      "بروناي": "+673", // Brunei
+      "بلغاريا": "+359", // Bulgaria
+      "بوركينا فاسو": "+226", // Burkina Faso
+      "بوروندي": "+257", // Burundi
+      "الرأس الأخضر": "+238", // Cape Verde
+      "كمبوديا": "+855", // Cambodia
+      "الكاميرون": "+237", // Cameroon
+      "كندا": "+1", // Canada
+      "جمهورية أفريقيا الوسطى": "+236", // Central African Republic
+      "تشاد": "+235", // Chad
+      "تشيلي": "+56", // Chile
+      "الصين": "+86", // China
+      "كولومبيا": "+57", // Colombia
+      "جزر القمر": "+269", // Comoros
+      "الكونغو": "+242", // Congo
+      "كوستاريكا": "+506", // Costa Rica
+      "كرواتيا": "+385", // Croatia
+      "كوبا": "+53", // Cuba
+      "قبرص": "+357", // Cyprus
+      "جمهورية التشيك": "+420", // Czech Republic
+      "الدنمارك": "+45", // Denmark
+      "جيبوتي": "+253", // Djibouti
+      "دومينيكا": "+1-767", // Dominica
+      "جمهورية الدومينيكان": "+1-809", // Dominican Republic
+      "الإكوادور": "+593", // Ecuador
+      "مصر": "+20", // Egypt
+      "السلفادور": "+503", // El Salvador
+      "غينيا الاستوائية": "+240", // Equatorial Guinea
+      "إريتريا": "+291", // Eritrea
+      "إستونيا": "+372", // Estonia
+      "إسواتيني": "+268", // Eswatini
+      "إثيوبيا": "+251", // Ethiopia
+      "فيجي": "+679", // Fiji
+      "فنلندا": "+358", // Finland
+      "فرنسا": "+33", // France
+      "الغابون": "+241", // Gabon
+      "غامبيا": "+220", // Gambia
+      "جورجيا": "+995", // Georgia
+      "ألمانيا": "+49", // Germany
+      "غانا": "+233", // Ghana
+      "اليونان": "+30", // Greece
+      "غرينادا": "+1-473", // Grenada
+      "غواتيمالا": "+502", // Guatemala
+      "غينيا": "+224", // Guinea
+      "غينيا بيساو": "+245", // Guinea-Bissau
+      "غيانا": "+592", // Guyana
+      "هايتي": "+509", // Haiti
+      "هندوراس": "+504", // Honduras
+      "المجر": "+36", // Hungary
+      "آيسلندا": "+354", // Iceland
+      "الهند": "+91", // India
+      "إندونيسيا": "+62", // Indonesia
+      "إيران": "+98", // Iran
+      "العراق": "+964", // Iraq
+      "أيرلندا": "+353", // Ireland
+      "إسرائيل": "+972", // Israel
+      "إيطاليا": "+39", // Italy
+      "جامايكا": "+1-876", // Jamaica
+      "اليابان": "+81", // Japan
+      "الأردن": "+962", // Jordan
+      "كازاخستان": "+7", // Kazakhstan
+      "كينيا": "+254", // Kenya
+      "كيريباتي": "+686", // Kiribati
+      "كوريا الشمالية": "+850", // North Korea
+      "كوريا الجنوبية": "+82", // South Korea
+      "الكويت": "+965", // Kuwait
+      "قيرغيزستان": "+996", // Kyrgyzstan
+      "لاوس": "+856", // Laos
+      "لاتفيا": "+371", // Latvia
+      "لبنان": "+961", // Lebanon
+      "ليسوتو": "+266", // Lesotho
+      "ليبيريا": "+231", // Liberia
+      "ليبيا": "+218", // Libya
+      "ليختنشتاين": "+423", // Liechtenstein
+      "ليتوانيا": "+370", // Lithuania
+      "لوكسمبورغ": "+352", // Luxembourg
+      "مدغشقر": "+261", // Madagascar
+      "مالاوي": "+265", // Malawi
+      "ماليزيا": "+60", // Malaysia
+      "جزر المالديف": "+960", // Maldives
+      "مالي": "+223", // Mali
+      "مالطا": "+356", // Malta
+      "جزر مارشال": "+692", // Marshall Islands
+      "موريتانيا": "+222", // Mauritania
+      "موريشيوس": "+230", // Mauritius
+      "المكسيك": "+52", // Mexico
+      "ولايات ميكرونيسيا المتحدة": "+691", // Micronesia
+      "مولدوفا": "+373", // Moldova
+      "موناكو": "+377", // Monaco
+      "منغوليا": "+976", // Mongolia
+      "الجبل الأسود": "+382", // Montenegro
+      "المغرب": "+212", // Morocco
+      "موزمبيق": "+258", // Mozambique
+      "ميانمار": "+95", // Myanmar
+      "ناميبيا": "+264", // Namibia
+      "ناورو": "+674", // Nauru
+      "نيبال": "+977", // Nepal
+      "هولندا": "+31", // Netherlands
+      "نيوزيلندا": "+64", // New Zealand
+      "نيكاراغوا": "+505", // Nicaragua
+      "النيجر": "+227", // Niger
+      "نيجيريا": "+234", // Nigeria
+      "مقدونيا الشمالية": "+389", // North Macedonia
+      "النرويج": "+47", // Norway
+      "عمان": "+968", // Oman
+      "باكستان": "+92", // Pakistan
+      "بالاو": "+680", // Palau
+      "فلسطين": "+970", // Palestine
+      "بنما": "+507", // Panama
+      "بابوا غينيا الجديدة": "+675", // Papua New Guinea
+      "باراغواي": "+595", // Paraguay
+      "بيرو": "+51", // Peru
+      "الفلبين": "+63", // Philippines
+      "بولندا": "+48", // Poland
+      "البرتغال": "+351", // Portugal
+      "قطر": "+974", // Qatar
+      "رومانيا": "+40", // Romania
+      "روسيا": "+7", // Russia
+      "رواندا": "+250", // Rwanda
+      "سانت كيتس ونيفيس": "+1-869", // Saint Kitts and Nevis
+      "سانت لوسيا": "+1-758", // Saint Lucia
+      "سانت فينسنت والغرينادين": "+1-784", // Saint Vincent and the Grenadines
+      "ساموا": "+685", // Samoa
+      "سان مارينو": "+378", // San Marino
+      "ساو تومي وبرينسيبي": "+239", // Sao Tome and Principe
+      "السعودية": "+966", // Saudi Arabia
+      "السنغال": "+221", // Senegal
+      "صربيا": "+381", // Serbia
+      "سيشل": "+248", // Seychelles
+      "سيراليون": "+232", // Sierra Leone
+      "سنغافورة": "+65", // Singapore
+      "سلوفاكيا": "+421", // Slovakia
+      "سلوفينيا": "+386", // Slovenia
+      "جزر سليمان": "+677", // Solomon Islands
+      "الصومال": "+252", // Somalia
+      "جنوب أفريقيا": "+27", // South Africa
+      "جنوب السودان": "+211", // South Sudan
+      "إسبانيا": "+34", // Spain
+      "سريلانكا": "+94", // Sri Lanka
+      "السودان": "+249", // Sudan
+      "سورينام": "+597", // Suriname
+      "السويد": "+46", // Sweden
+      "سويسرا": "+41", // Switzerland
+      "سوريا": "+963", // Syria
+      "تايوان": "+886", // Taiwan
+      "طاجيكستان": "+992", // Tajikistan
+      "تنزانيا": "+255", // Tanzania
+      "تايلاند": "+66", // Thailand
+      "تيمور الشرقية": "+670", // Timor-Leste
+      "توغو": "+228", // Togo
+      "تونغا": "+676", // Tonga
+      "ترينيداد وتوباغو": "+1-868", // Trinidad and Tobago
+      "تونس": "+216", // Tunisia
+      "تركيا": "+90", // Turkey
+      "تركمانستان": "+993", // Turkmenistan
+      "توفالو": "+688", // Tuvalu
+      "أوغندا": "+256", // Uganda
+      "أوكرانيا": "+380", // Ukraine
+      "الإمارات العربية المتحدة": "+971", // United Arab Emirates
+      "المملكة المتحدة": "+44", // United Kingdom
+      "الولايات المتحدة": "+1", // United States
+      "أوروغواي": "+598", // Uruguay
+      "أوزبكستان": "+998", // Uzbekistan
+      "فانواتو": "+678", // Vanuatu
+      "الفاتيكان": "+379", // Vatican City
+      "فنزويلا": "+58", // Venezuela
+      "فيتنام": "+84", // Vietnam
+      "اليمن": "+967", // Yemen
+      "زامبيا": "+260", // Zambia
+      "زيمبابوي": "+263", // Zimbabwe
     };
 
     const countryCode = isFadi ? "+961" : countryCodeMap[nationality] || "+20";
@@ -136,13 +327,13 @@ function SpecialistCard({ spec, showActions, onCancel, onAccept }) {
       {/* Beneficiary Section */}
       <div className="flex justify-between items-center">
         <p>الاسم: {beneficiaryName}</p>
-        <div className="flex gap-8">
+        <div className="flex gap-2 sm:gap-4">
           <Send
-            className="w-7 h-7 bg-[#B2CEF2] rounded-md items-center justify-center mt-1 text-white cursor-pointer"
+            className="w-6 h-6 sm:w-7 sm:h-7 bg-[#B2CEF2] rounded-md items-center justify-center mt-1 text-white cursor-pointer"
             onClick={() => handleEmailClick(beneficiaryEmail)}
           />
           <Phone
-            className="w-7 h-7 bg-[#B2CEF2] rounded-md items-center justify-center mt-1 text-white cursor-pointer"
+            className="w-6 h-6 sm:w-7 sm:h-7 bg-[#B2CEF2] rounded-md items-center justify-center mt-1 text-white cursor-pointer"
             onClick={() => handleWhatsAppClick(beneficiaryWhatsAppNumber, beneficiaryNationality)}
           />
         </div>
@@ -151,13 +342,13 @@ function SpecialistCard({ spec, showActions, onCancel, onAccept }) {
       {/* Specialist Section */}
       <div className="flex justify-between items-center">
         <p>دكتور: {specialistName}</p>
-        <div className="flex gap-8">
+        <div className="flex gap-2 sm:gap-4">
           <Send
-            className="w-7 h-7 bg-[#B2CEF2] rounded-md items-center justify-center mt-1 text-white cursor-pointer"
+            className="w-6 h-6 sm:w-7 sm:h-7 bg-[#B2CEF2] rounded-md items-center justify-center mt-1 text-white cursor-pointer"
             onClick={() => handleEmailClick(specialistEmail)}
           />
           <Phone
-            className="w-7 h-7 bg-[#B2CEF2] rounded-md items-center justify-center mt-1 text-white cursor-pointer"
+            className="w-6 h-6 sm:w-7 sm:h-7 bg-[#B2CEF2] rounded-md items-center justify-center mt-1 text-white cursor-pointer"
             onClick={() =>
               handleWhatsAppClick(
                 specialistWhatsAppNumber,
@@ -178,16 +369,16 @@ function SpecialistCard({ spec, showActions, onCancel, onAccept }) {
 
       {/* Actions */}
       {showActions && (
-        <div className="flex gap-6 mt-2 items-center justify-center">
+        <div className="flex gap-4 sm:gap-6 mt-2 items-center justify-center">
           <button
             onClick={handleAcceptClick}
-            className="bg-white w-[85px] font-medium hover:bg-[#B2CEF2] text-[#1F77BC] border-2 border-[#19649E] px-3 py-1 rounded-[20px] text-m"
+            className="bg-white w-[75px] sm:w-[85px] font-medium hover:bg-[#B2CEF2] text-[#1F77BC] border-2 border-[#19649E] px-2 sm:px-3 py-1 rounded-[20px] text-sm sm:text-m"
           >
             قبول
           </button>
           <button
             onClick={handleCancelClick}
-            className="bg-white w-[85px] font-medium hover:bg-[#B2CEF2] text-[#1F77BC] border-2 border-[#19649E] px-3 py-1 rounded-[20px] text-m"
+            className="bg-white w-[75px] sm:w-[85px] font-medium hover:bg-[#B2CEF2] text-[#1F77BC] border-2 border-[#19649E] px-2 sm:px-3 py-1 rounded-[20px] text-sm sm:text-m"
           >
             رفض
           </button>
@@ -197,7 +388,7 @@ function SpecialistCard({ spec, showActions, onCancel, onAccept }) {
       {/* Cancel Confirmation Modal */}
       {showCancelConfirmation && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg">
             <h3 className="text-lg font-bold mb-4 text-[#1F77BC]">هل أنت متأكد من إلغاء الجلسة؟</h3>
             <div className="flex gap-4 justify-center mt-4">
               <button
@@ -220,7 +411,7 @@ function SpecialistCard({ spec, showActions, onCancel, onAccept }) {
       {/* Accept Confirmation Modal */}
       {showAcceptConfirmation && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg">
+          <div className="bg-white p-4 sm:p-6 rounded-lg shadow-lg">
             <h3 className="text-lg font-bold mb-4 text-[#1F77BC]">هل أنت متأكد من قبول الجلسة؟</h3>
             <div className="flex gap-4 justify-center mt-4">
               <button
@@ -287,7 +478,7 @@ export default function Session() {
   const handleCancelSession = async (sessionId) => {
     try {
       const response = await fetch(
-        `https://wellbeingproject.onrender.com/api/sessions/cancel/${sessionId}`,
+        `https://wellbeing-3en6.onrender.com/api/sessions/cancel/${sessionId}`,
         {
           method: "PUT",
           headers: {
@@ -324,50 +515,11 @@ export default function Session() {
     }
   };
 
-  // Handle session acceptance
+  // Handle session acceptance for جلسات فوريه, استشارات مجانيه, and جلسات معلقه
   const handleAcceptPendingSession = async (sessionId) => {
     try {
       const response = await fetch(
-        `https://wellbeingproject.onrender.com/api/sessions/update/pendingToScheduled/${sessionId}`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (!response.ok) throw new Error("Failed to confirm session");
-
-      toast.success("تم قبول الجلسة بنجاح", {
-        position: "top-center",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-
-      // Refetch the pending and scheduled sessions to update the state
-      await fetchSessionsByStatus("Pending", setPendingSessions);
-      await fetchSessionsByStatus("Scheduled", setScheduledSessions);
-    } catch (error) {
-      console.error("Error confirming pending session:", error);
-      toast.error(`فشل في قبول الجلسة: ${error.message}`, {
-        position: "top-center",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-      });
-    }
-  };
-
-  const handleAcceptOtherSession = async (sessionId) => {
-    try {
-      const response = await fetch(
-        `https://wellbeingproject.onrender.com/api/admin/confirmeSessionUpdate/${sessionId}`,
+        `https://wellbeing-3en6.onrender.com/api/sessions/update/pendingToScheduled/${sessionId}`,
         {
           method: "PATCH",
           headers: {
@@ -388,10 +540,49 @@ export default function Session() {
       });
 
       // Refetch the relevant sessions to update the state
-      await fetchSessionsByStatus("Instant", setInstantSessions);
-      await fetchSessionsByStatus("Free", setFreeConsultations);
+      await fetchSessionsByStatus("Pending", setPendingSessions);
+      await fetchSessionsByStatus("Scheduled", setScheduledSessions);
     } catch (error) {
-      console.error("Error confirming other session:", error);
+      console.error("Error confirming pending session:", error);
+      toast.error(`فشل في قبول الجلسة: ${error.message}`, {
+        position: "top-center",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    }
+  };
+
+  // Handle session acceptance for جلسات مجدوله
+  const handleAcceptScheduledSession = async (sessionId) => {
+    try {
+      const response = await fetch(
+        `https://wellbeing-3en6.onrender.com/api/sessions/update/${sessionId}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Failed to confirm session");
+
+      toast.success("تم قبول الجلسة بنجاح", {
+        position: "top-center",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+
+      // Refetch the scheduled sessions to update the state
+      await fetchSessionsByStatus("Scheduled", setScheduledSessions);
+    } catch (error) {
+      console.error("Error confirming scheduled session:", error);
       toast.error(`فشل في قبول الجلسة: ${error.message}`, {
         position: "top-center",
         autoClose: 3000,
@@ -578,7 +769,7 @@ export default function Session() {
 
       {/* Metrics Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 items-center justify-center gap-4">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Total Sessions Card */}
           <div className="bg-[#1F77BC] p-4 rounded-[20px] shadow-md flex flex-col items-center text-white">
             <FaCalendarAlt className="text-2xl" />
@@ -599,7 +790,7 @@ export default function Session() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Treatment Programs Chart */}
           <Card className="p-4 text-center">
             <h3 className="font-bold mb-2 text-sm sm:text-base">الجلسات</h3>
@@ -679,7 +870,7 @@ export default function Session() {
                 spec={session}
                 showActions2={true}
                 onCancel={handleCancelSession}
-                onAccept={handleAcceptOtherSession}
+                onAccept={handleAcceptScheduledSession}
               />
             ))}
           </div>
@@ -703,7 +894,7 @@ export default function Session() {
                 spec={session}
                 showActions={true}
                 onCancel={handleCancelSession}
-                onAccept={handleAcceptOtherSession}
+                onAccept={handleAcceptPendingSession}
               />
             ))}
           </div>
@@ -718,7 +909,7 @@ export default function Session() {
                 spec={session}
                 showActions={true}
                 onCancel={handleCancelSession}
-                onAccept={handleAcceptOtherSession}
+                onAccept={handleAcceptPendingSession}
               />
             ))}
           </div>
@@ -753,7 +944,7 @@ export default function Session() {
                 spec={session}
                 showActions={true}
                 onCancel={handleCancelSession}
-                onAccept={handleAcceptOtherSession}
+                onAccept={handleAcceptScheduledSession}
               />
             ))}
           </div>

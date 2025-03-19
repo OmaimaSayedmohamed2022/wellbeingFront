@@ -1,16 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Phone, Mail, Send } from "lucide-react";
 import Avatar from "../../assets/images/person.jpg";
 import Card from "../UI/card.jsx";
 import SmallCard from "../UI/smallcard.jsx";
 import { FaCalendarAlt } from "react-icons/fa";
-import { PieChart, Pie, Cell, Legend, ResponsiveContainer } from "recharts";
-
-const attendanceData = [
-  { name: "حضور", value: 80, color: "#1F77BC" }, // 80% attended
-  { name: "إلغاء", value: 20, color: "#CCCCCC" } // 20% canceled
-];
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const BeneficiaryDetails = () => {
   const location = useLocation();
@@ -22,8 +18,24 @@ const BeneficiaryDetails = () => {
     canceledSessions: [],
     upcomingSessions: [],
   });
-
+  const [specialists, setSpecialists] = useState({}); // Store fetched specialist data
   const benef = location.state?.benef;
+
+  const fetchSpecialist = useCallback(async (specialistId) => {
+    try {
+      const response = await fetch(
+        `https://scopey.onrender.com/api/specialist/getById/${specialistId}`
+      );
+      if (!response.ok) throw new Error("Failed to fetch specialist data");
+      const data = await response.json();
+      setSpecialists((prev) => ({ ...prev, [specialistId]: data.specialist }));
+    } catch (error) {
+      console.error("Error fetching specialist data:", error);
+      toast.error("فشل في تحميل بيانات المتخصص", {
+        position: "top-right",
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (benef) {
@@ -31,10 +43,14 @@ const BeneficiaryDetails = () => {
         .then((response) => response.json())
         .then((data) => {
           setSessionsData(data);
+          // Fetch specialist data for each session
+          data.scheduledSessions.forEach((session) => fetchSpecialist(session.specialist));
+          data.canceledSessions.forEach((session) => fetchSpecialist(session.specialist));
+          data.completedSessions.forEach((session) => fetchSpecialist(session.specialist));
         })
         .catch((error) => console.error("Error fetching sessions:", error));
     }
-  }, [benef]);
+  }, [benef, fetchSpecialist]);
 
   if (!benef) {
     return (
@@ -52,7 +68,10 @@ const BeneficiaryDetails = () => {
   }
 
   const formatPhoneNumberForWhatsApp = (phone, nationality) => {
-    if (!phone || !nationality) return "";
+    if (!phone || !nationality) {
+      console.warn("Invalid phone or nationality provided.");
+      return "#"; // Fallback to prevent broken links
+    }
     const cleanedPhone = phone.replace(/\D/g, "");
     const phoneWithoutZero = cleanedPhone.replace(/^0+/, "");
     const countryCodes = {
@@ -255,11 +274,11 @@ const BeneficiaryDetails = () => {
     return `${countryCode}${phoneWithoutZero}`;
   };
 
-  const whatsappLink = `https://wa.me/${formatPhoneNumberForWhatsApp(
-    benef.phone,
-    benef.nationality
-  )}`;
-  const emailLink = `mailto:${benef.email}`;
+  const showErrorToast = (message) => {
+    toast.error(message, {
+      position: "top-right",
+    });
+  };
 
   return (
     <div className="container mx-auto p-4 text-[#19649E] text-lg">
@@ -270,7 +289,6 @@ const BeneficiaryDetails = () => {
       >
         العودة
       </button>
-
       {/* Main Layout: Beneficiary + Personal Data */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Left Section (Beneficiary Info + Charts) */}
@@ -281,6 +299,9 @@ const BeneficiaryDetails = () => {
               <img
                 src={benef.imageUrl || Avatar}
                 alt="Avatar"
+                onError={(e) => {
+                  e.target.src = "https://via.placeholder.com/150"; // Fallback image
+                }}
                 className="w-32 h-32 rounded-full object-cover"
               />
               <div className="text-center md:text-left">
@@ -289,13 +310,13 @@ const BeneficiaryDetails = () => {
                 <p>دكتور: {benef.doctor}</p>
                 <div className="mt-4 flex gap-4 justify-center md:justify-start">
                   <a
-                    href={emailLink}
+                    href={`mailto:${benef.email}`}
                     className="flex items-center justify-center text-white hover:text-[#19649E] bg-[#B2CEF2] border rounded-lg w-9 h-9"
                   >
                     <Send size={20} />
                   </a>
                   <a
-                    href={whatsappLink}
+                    href={`https://wa.me/${formatPhoneNumberForWhatsApp(benef.phone, benef.nationality)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center text-white hover:text-[#19649E] bg-[#B2CEF2] border rounded-lg w-9 h-9"
@@ -306,7 +327,6 @@ const BeneficiaryDetails = () => {
               </div>
             </div>
           </SmallCard>
-
           {/* Charts Section */}
           <div className="grid grid-cols-1 gap-6">
             <Card className="flex items-center justify-center">
@@ -318,7 +338,6 @@ const BeneficiaryDetails = () => {
             </Card>
           </div>
         </div>
-
         {/* Right Section (Personal Data Card) */}
         <Card className="bg-white text-[#19649E] p-4 col-span-1 md:col-span-2 lg:col-span-2 text-lg">
           <h3 className="text-xl font-bold mb-2">البيانات الشخصية</h3>
@@ -334,87 +353,184 @@ const BeneficiaryDetails = () => {
           </SmallCard>
         </Card>
       </div>
-
       {/* Upcoming & Past Appointments */}
       <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Upcoming Appointments Card */}
         <Card className="p-4 max-h-[450px]">
           <h3 className="text-xl font-bold mb-4">المواعيد القادمة</h3>
-          {sessionsData.scheduledSessions.map((session) => (
-            <SmallCard key={session._id} className="p-4 flex flex-col md:flex-row items-center mb-4">
-              <div className="flex-1 text-center md:text-left">
-                <p>الاسم: {`${benef.firstName} ${benef.lastName}`}</p>
-                <p>الحالة النفسية: {session.subcategory}</p>
-                <p>تاريخ الجلسة: {new Date(session.sessionDate).toLocaleDateString()}</p>
-              </div>
-              <div className="flex gap-2 mt-2 justify-center">
-                <a href={emailLink}>
-                  <Mail className="text-white cursor-pointer" />
-                </a>
-                <a
-                  href={whatsappLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Phone className="text-white cursor-pointer" />
-                </a>
-              </div>
-            </SmallCard>
-          ))}
+          {sessionsData.scheduledSessions.map((session) => {
+            const specialist = specialists[session.specialist];
+            return (
+              <SmallCard key={session._id} className="p-4 flex flex-col md:flex-row items-start mb-4">
+                {/* Session Details */}
+                <div className="flex-2">
+                  <p>الاسم: {specialist ? `${specialist.firstName} ${specialist.lastName}` : "جاري التحميل..."}</p>
+                  <p>العمل: {specialist?.work || "غير محدد"}</p>
+                  <p>تاريخ الجلسة: {new Date(session.sessionDate).toLocaleDateString()}</p>
+                </div>
+                {/* Icons */}
+                <div className="flex-1 flex flex-col items-end">
+                  <img
+                    src={specialist?.imageUrl || Avatar}
+                    alt="Avatar"
+                    onError={(e) => {
+                      e.target.src = "https://via.placeholder.com/150"; // Fallback image
+                    }}
+                    className="w-16 h-16 bg-gray-300 rounded-full object-cover"
+                  />
+                  <div className="flex gap-4 mt-2 justify-end">
+                    {/* Email link */}
+                    <a
+                      href={`mailto:${specialist?.email || "#"}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!specialist?.email) {
+                          showErrorToast("لا يوجد بريد إلكتروني لهذا المتخصص");
+                        }
+                      }}
+                      aria-label="Send email to specialist"
+                    >
+                      <Mail className="text-white cursor-pointer" />
+                    </a>
+                    {/* WhatsApp link */}
+                    <a
+                      href={`https://wa.me/${formatPhoneNumberForWhatsApp(specialist?.phone, specialist?.nationality)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!specialist?.phone) {
+                          showErrorToast("لا يوجد واتساب لهذا المتخصص");
+                        }
+                      }}
+                      aria-label="Send WhatsApp message to specialist"
+                    >
+                      <Phone className="text-white cursor-pointer" />
+                    </a>
+                  </div>
+                </div>
+              </SmallCard>
+            );
+          })}
         </Card>
-
         {/* Canceled Appointments Card */}
         <Card className="p-4 max-h-[450px]">
           <h3 className="text-xl font-bold mb-4">المواعيد المعاد جدولتها و الملغاة</h3>
-          {sessionsData.canceledSessions.map((session) => (
-            <SmallCard key={session._id} className="p-4 flex flex-col md:flex-row items-center mb-4">
-              <div className="flex-1 text-center md:text-left">
-                <p>الاسم: {`${benef.firstName} ${benef.lastName}`}</p>
-                <p>الحالة النفسية: {session.subcategory}</p>
-                <p>تاريخ الجلسة: {new Date(session.sessionDate).toLocaleDateString()}</p>
-              </div>
-              <div className="flex gap-2 mt-2 justify-center">
-                <a href={emailLink}>
-                  <Mail className="text-white cursor-pointer" />
-                </a>
-                <a
-                  href={whatsappLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Phone className="text-white cursor-pointer" />
-                </a>
-              </div>
-            </SmallCard>
-          ))}
+          {sessionsData.canceledSessions.map((session) => {
+            const specialist = specialists[session.specialist];
+            return (
+              <SmallCard key={session._id} className="p-4 flex flex-col md:flex-row items-start mb-4">
+                {/* Session Details */}
+                <div className="flex-2">
+                  <p>الاسم: {specialist ? `${specialist.firstName} ${specialist.lastName}` : "جاري التحميل..."}</p>
+                  <p>العمل: {specialist?.work || "غير محدد"}</p>
+                  <p>تاريخ الجلسة: {new Date(session.sessionDate).toLocaleDateString()}</p>
+                </div>
+                {/* Icons */}
+                <div className="flex-1 flex flex-col items-end">
+                  <img
+                    src={specialist?.imageUrl || Avatar}
+                    alt="Avatar"
+                    onError={(e) => {
+                      e.target.src = "https://via.placeholder.com/150"; // Fallback image
+                    }}
+                    className="w-16 h-16 bg-gray-300 rounded-full object-cover"
+                  />
+                  <div className="flex gap-4 mt-2 justify-end">
+                    {/* Email link */}
+                    <a
+                      href={`mailto:${specialist?.email || "#"}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!specialist?.email) {
+                          showErrorToast("لا يوجد بريد إلكتروني لهذا المتخصص");
+                        }
+                      }}
+                      aria-label="Send email to specialist"
+                    >
+                      <Mail className="text-white cursor-pointer" />
+                    </a>
+                    {/* WhatsApp link */}
+                    <a
+                      href={`https://wa.me/${formatPhoneNumberForWhatsApp(specialist?.phone, specialist?.nationality)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!specialist?.phone) {
+                          showErrorToast("لا يوجد واتساب لهذا المتخصص");
+                        }
+                      }}
+                      aria-label="Send WhatsApp message to specialist"
+                    >
+                      <Phone className="text-white cursor-pointer" />
+                    </a>
+                  </div>
+                </div>
+              </SmallCard>
+            );
+          })}
         </Card>
-
         {/* Completed Appointments Card */}
         <Card className="p-4 max-h-[450px]">
           <h3 className="text-xl font-bold mb-4">المواعيد المكتملة</h3>
-          {sessionsData.completedSessions.map((session) => (
-            <SmallCard key={session._id} className="p-4 flex flex-col md:flex-row items-center mb-4">
-              <div className="flex-1 text-center md:text-left">
-                <p>الاسم: {`${benef.firstName} ${benef.lastName}`}</p>
-                <p>الحالة النفسية: {session.subcategory}</p>
-                <p>تاريخ الجلسة: {new Date(session.sessionDate).toLocaleDateString()}</p>
-              </div>
-              <div className="flex gap-2 mt-2 justify-center">
-                <a href={emailLink}>
-                  <Mail className="text-white cursor-pointer" />
-                </a>
-                <a
-                  href={whatsappLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <Phone className="text-white cursor-pointer" />
-                </a>
-              </div>
-            </SmallCard>
-          ))}
+          {sessionsData.completedSessions.map((session) => {
+            const specialist = specialists[session.specialist];
+            return (
+              <SmallCard key={session._id} className="p-4 flex flex-col md:flex-row items-start mb-4">
+                {/* Session Details */}
+                <div className="flex-2">
+                  <p>الاسم: {specialist ? `${specialist.firstName} ${specialist.lastName}` : "جاري التحميل..."}</p>
+                  <p>العمل: {specialist?.work || "غير محدد"}</p>
+                  <p>تاريخ الجلسة: {new Date(session.sessionDate).toLocaleDateString()}</p>
+                </div>
+                {/* Icons */}
+                <div className="flex-1 flex flex-col items-end">
+                  <img
+                    src={specialist?.imageUrl || Avatar}
+                    alt="Avatar"
+                    onError={(e) => {
+                      e.target.src = "https://via.placeholder.com/150"; // Fallback image
+                    }}
+                    className="w-16 h-16 bg-gray-300 rounded-full object-cover"
+                  />
+                  <div className="flex gap-4 mt-2 justify-end">
+                    {/* Email link */}
+                    <a
+                      href={`mailto:${specialist?.email || "#"}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!specialist?.email) {
+                          showErrorToast("لا يوجد بريد إلكتروني لهذا المتخصص");
+                        }
+                      }}
+                      aria-label="Send email to specialist"
+                    >
+                      <Mail className="text-white cursor-pointer" />
+                    </a>
+                    {/* WhatsApp link */}
+                    <a
+                      href={`https://wa.me/${formatPhoneNumberForWhatsApp(specialist?.phone, specialist?.nationality)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!specialist?.phone) {
+                          showErrorToast("لا يوجد واتساب لهذا المتخصص");
+                        }
+                      }}
+                      aria-label="Send WhatsApp message to specialist"
+                    >
+                      <Phone className="text-white cursor-pointer" />
+                    </a>
+                  </div>
+                </div>
+              </SmallCard>
+            );
+          })}
         </Card>
       </div>
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick rtl pauseOnFocusLoss draggable pauseOnHover />
     </div>
   );
 };

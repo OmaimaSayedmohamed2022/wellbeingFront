@@ -697,7 +697,7 @@ function DoctorDetails() {
           </Card>
           <Card className="max-w-[300px] mx-auto">
             <h2 className="text-xl font-bold mb-4">تفاصيل الجلسات</h2>
-            <p className="text-lg font-medium"><strong>سعر الجلسة:</strong> {doctor.sessionPrice} جنيه</p>
+            <p className="text-lg font-medium"><strong>سعر الجلسة:</strong> {doctor.sessionPrice} $</p>
             <p className="text-lg font-medium"><strong>مدة الجلسة:</strong> {doctor.sessionDuration} دقيقة</p>
             <p className="text-lg font-medium flex flex-wrap items-center gap-x-2">
               <File className="text-2xl" />

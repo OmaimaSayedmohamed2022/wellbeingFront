@@ -426,7 +426,7 @@ const NewSpecialistDetails = () => {
                 <strong>عنوان السكن:</strong> {specialist.homeAddress}
               </p>
               <p className="text-sm sm:text-lg">
-                <strong>سعر الجلسة:</strong> ${specialist.sessionPrice}
+                <strong>سعر الجلسة:</strong> {specialist.sessionPrice}$
               </p>
               <p className="text-sm sm:text-lg">
                 <strong>مدة الجلسة:</strong> {specialist.sessionDuration} دقيقة

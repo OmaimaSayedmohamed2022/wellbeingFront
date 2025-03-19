@@ -309,7 +309,7 @@ function SpecialistCard({ spec, showActions, showActions2, onCancel, onAccept })
             let response;
             if (spec.status === "Scheduled") {
                 // Update the status to "Completed" for المواعيد المجدوله
-                response = await fetch(`https://scopey.onrender.com/api/sessions/update/${spec._id}`, {
+                response = await fetch(`https://wellbeingproject.onrender.com/api/sessions/update/${spec._id}`, {
                     method: "PATCH",
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -321,7 +321,7 @@ function SpecialistCard({ spec, showActions, showActions2, onCancel, onAccept })
                 });
             } else if (spec.status === "Pending") {
                 // Move from Pending to Scheduled for المواعيد المعلقه
-                response = await fetch(`https://scopey.onrender.com/api/sessions/update/pendingToScheduled/${spec._id}`, {
+                response = await fetch(`https://wellbeingproject.onrender.com/api/sessions/update/pendingToScheduled/${spec._id}`, {
                     method: "PATCH",
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('token')}`,
