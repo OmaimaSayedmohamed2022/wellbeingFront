@@ -11,6 +11,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { parsePhoneNumberFromString, getCountryCallingCode } from 'libphonenumber-js';
 
+// Format phone number utility
 export const formatPhoneNumber = (phoneNumber, nationality) => {
   if (!phoneNumber) return phoneNumber; // Return as-is if no phone number
 
@@ -240,8 +241,6 @@ const AvailabilityForm = ({ specialist, onClose, onUpdateAvailability }) => {
     onClose();
   };
 
-  
-
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <div className="bg-white p-6 rounded-2xl shadow-md text-center">
@@ -314,7 +313,6 @@ function SpecialistCard({ spec, onToggleAvailability }) {
     }
   };
 
-
   // Function to open email client
   const handleEmailClick = (e) => {
     e.stopPropagation(); // Prevent card click event
@@ -361,6 +359,33 @@ function SpecialistCard({ spec, onToggleAvailability }) {
   );
 }
 
+// ConfirmationDialog Component
+const ConfirmationDialog = ({ isOpen, onClose, onConfirm, message }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div className="bg-white p-6 rounded-2xl shadow-md text-center">
+        <h2 className="text-xl font-bold mb-4">{message}</h2>
+        <div className="flex justify-center gap-4">
+          <button
+            onClick={onConfirm}
+            className="bg-transparent text-[#1F77BC] border-2 border-[#1F77BC] hover:bg-[#B2CEF2] px-3 py-1 rounded-[20px] text-lg"
+          >
+            نعم
+          </button>
+          <button
+            onClick={onClose}
+            className="bg-transparent text-[#1F77BC] border-2 border-[#1F77BC] hover:bg-[#B2CEF2] px-3 py-1 rounded-[20px] text-lg"
+          >
+            إلغاء
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function Dashboard() {
   const [mostBooked, setMostBooked] = useState([]);
   const [leastBooked, setLeastBooked] = useState([]);
@@ -368,7 +393,8 @@ export default function Dashboard() {
   const [specialtiesData, setSpecialtiesData] = useState([]);
   const [newSpecialists, setNewSpecialists] = useState([]);
   const [attendanceData, setAttendanceData] = useState([]);
-  const [isConfirming, setIsConfirming] = useState(false);
+  const [isConfirmingAccept, setIsConfirmingAccept] = useState(false);
+  const [isConfirmingReject, setIsConfirmingReject] = useState(false);
   const [selectedSpecialistId, setSelectedSpecialistId] = useState(null);
   const [doctorsAvailability, setDoctorsAvailability] = useState({});
   const [showAvailabilityForm, setShowAvailabilityForm] = useState(false);
@@ -380,18 +406,70 @@ export default function Dashboard() {
   // Function to handle accepting a new specialist
   const handleAcceptSpecialist = (specialistId) => {
     setSelectedSpecialistId(specialistId);
-    setIsConfirming(true);
+    setIsConfirmingAccept(true); // Show the confirmation dialog for acceptance
   };
 
   // Function to handle rejecting a new specialist
-  const handleRejectSpecialist = async (specialistId) => {
+  const handleRejectSpecialist = (specialistId) => {
+    setSelectedSpecialistId(specialistId);
+    setIsConfirmingReject(true); // Show the confirmation dialog for rejection
+  };
+
+  // Function to confirm acceptance
+  const confirmAcceptance = async () => {
+    try {
+      if (!token) {
+        throw new Error("لم يتم العثور على رمز التحقق. يرجى تسجيل الدخول مرة أخرى.");
+      }
+      const response = await axios.patch(
+        `https://wellbeingproject.onrender.com/api/admin/confirm/${selectedSpecialistId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (response.status === 200) {
+        // Show success notification
+        toast.success("تم قبول الأخصائي بنجاح!", {
+          position: "top-center",
+          autoClose: 3000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+        // Remove the accepted specialist from the newSpecialists list
+        setNewSpecialists((prev) => prev.filter((spec) => spec.id !== selectedSpecialistId));
+      } else {
+        throw new Error("فشل في قبول الأخصائي");
+      }
+    } catch (error) {
+      console.error("Error confirming specialist:", error);
+      toast.error(error.message || "حدث خطأ أثناء قبول الأخصائي", {
+        position: "top-center",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    } finally {
+      setIsConfirmingAccept(false); // Hide confirmation dialog
+      setSelectedSpecialistId(null); // Reset selected specialist ID
+    }
+  };
+
+  // Function to confirm rejection
+  const confirmRejection = async () => {
     try {
       if (!token) {
         throw new Error("لم يتم العثور على رمز التحقق. يرجى تسجيل الدخول مرة أخرى.");
       }
 
       const response = await axios.delete(
-        `https://wellbeingproject.onrender.com/api/specialist/delete/${specialistId}`,
+        `https://wellbeingproject.onrender.com/api/specialist/delete/${selectedSpecialistId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -410,7 +488,7 @@ export default function Dashboard() {
         });
 
         // Remove the rejected specialist from the newSpecialists list
-        setNewSpecialists((prev) => prev.filter((spec) => spec.id !== specialistId));
+        setNewSpecialists((prev) => prev.filter((spec) => spec.id !== selectedSpecialistId));
       } else {
         throw new Error("فشل في رفض الأخصائي");
       }
@@ -425,11 +503,12 @@ export default function Dashboard() {
         draggable: true,
       });
     } finally {
-      setIsConfirming(false); // Hide confirmation dialog
+      setIsConfirmingReject(false); // Hide confirmation dialog
       setSelectedSpecialistId(null); // Reset selected specialist ID
     }
   };
 
+  // Function to update availability
   const updateAvailability = async (specialistId, isAvailable) => {
     try {
       if (!token) {
@@ -478,378 +557,330 @@ export default function Dashboard() {
     }
   };
 
-  // Function to confirm acceptance
-  const confirmAcceptance = async () => {
+  // Fetch most booked specialists
+  const fetchMostBooked = async () => {
     try {
       if (!token) {
-        throw new Error("لم يتم العثور على رمز التحقق. يرجى تسجيل الدخول مرة أخرى.");
+        throw new Error("Authentication token is missing.");
       }
-      const response = await axios.patch(
-        `https://wellbeingproject.onrender.com/api/admin/confirm/${selectedSpecialistId}`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-      if (response.status === 200) {
-        // Show success notification
-        toast.success("تم قبول الأخصائي بنجاح!", {
-          position: "top-center",
-          autoClose: 3000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        });
-        // Remove the accepted specialist from the newSpecialists list
-        setNewSpecialists((prev) => prev.filter((spec) => spec.id !== selectedSpecialistId));
-      } else {
-        throw new Error("فشل في قبول الأخصائي");
-      }
-    } catch (error) {
-      console.error("Error confirming specialist:", error);
-      toast.error(error.message || "حدث خطأ أثناء قبول الأخصائي", {
-        position: "top-center",
-        autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
+
+      const response = await fetch("https://wellbeingproject.onrender.com/api/admin/topSpecialists", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       });
-    } finally {
-      setIsConfirming(false); // Hide confirmation dialog
-      setSelectedSpecialistId(null); // Reset selected specialist ID
+
+      if (response.status === 401) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const fetchedMostBooked = data.data.map((spec) => ({
+        firstName: spec.firstName,
+        lastName: spec.lastName,
+        work: spec.work,
+        email: spec.email,
+        sessionPrice: spec.sessionPrice,
+        sessionCount: spec.sessions.length,
+        yearsExperience: spec.yearsExperience,
+        isAvailable: spec.isAvailable,
+        files: spec.files,
+        workAddress: spec.workAddress,
+        homeAddress: spec.homeAddress,
+        phone: spec.phone,
+        imageUrl: spec.imageUrl || Avatar,
+        language: spec.language,
+        bio: spec.bio,
+        nationality: spec.nationality,
+        specialties: spec.specialties,
+        sessionDuration: spec.sessionDuration,
+        availableSlots: spec.availableSlots,
+        sessions: spec.sessions,
+        id: spec._id,
+        gender: spec.gender,
+      }));
+      setMostBooked(fetchedMostBooked);
+    } catch (error) {
+      console.error("Failed to fetch most booked specialists:", error);
     }
   };
 
-  // Function to confirm rejection
-  const confirmRejection = async () => {
-    await handleRejectSpecialist(selectedSpecialistId);
+  // Fetch least booked specialists
+  const fetchLeastBooked = async () => {
+    try {
+      if (!token) {
+        throw new Error("Authentication token is missing.");
+      }
+
+      const response = await fetch("https://wellbeingproject.onrender.com/api/admin/bottomSpecialists", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const fetchedLeastBooked = data.data.map((spec) => ({
+        firstName: spec.firstName,
+        lastName: spec.lastName,
+        work: spec.work,
+        email: spec.email,
+        sessionPrice: spec.sessionPrice,
+        sessionCount: spec.sessions.length,
+        yearsExperience: spec.yearsExperience,
+        isAvailable: spec.isAvailable,
+        files: spec.files,
+        workAddress: spec.workAddress,
+        homeAddress: spec.homeAddress,
+        phone: spec.phone,
+        imageUrl: spec.imageUrl || Avatar,
+        bio: spec.bio,
+        nationality: spec.nationality,
+        specialties: spec.specialties,
+        sessionDuration: spec.sessionDuration,
+        availableSlots: spec.availableSlots,
+        sessions: spec.sessions,
+        id: spec._id,
+        gender: spec.gender,
+      }));
+      setLeastBooked(fetchedLeastBooked);
+    } catch (error) {
+      console.error("Failed to fetch least booked specialists:", error);
+    }
+  };
+
+  // Fetch all specialists
+  const fetchAllSpecialists = async () => {
+    try {
+      const response = await fetch("https://wellbeingproject.onrender.com/api/specialist/getAll", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const fetchedSpecialists = data.data.map((spec) => ({
+        firstName: spec.firstName,
+        lastName: spec.lastName,
+        work: spec.work,
+        email: spec.email,
+        sessionPrice: spec.sessionPrice,
+        sessionCount: spec.sessions.length,
+        yearsExperience: spec.yearsExperience,
+        isAvailable: spec.isAvailable,
+        files: spec.files,
+        workAddress: spec.workAddress,
+        homeAddress: spec.homeAddress,
+        phone: spec.phone,
+        imageUrl: spec.imageUrl || Avatar,
+        bio: spec.bio,
+        nationality: spec.nationality,
+        specialties: spec.specialties,
+        sessionDuration: spec.sessionDuration,
+        availableSlots: spec.availableSlots,
+        sessions: spec.sessions,
+        id: spec._id,
+        gender: spec.gender,
+      }));
+
+      // Fetch available slots for each specialist and update availability
+      const updatedAvailability = {};
+      for (const spec of fetchedSpecialists) {
+        const slotsResponse = await fetch(
+          `https://wellbeingproject.onrender.com/api/admin/availableSlots/${spec.id}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!slotsResponse.ok) {
+          console.error(`Failed to fetch slots for ${spec.firstName} ${spec.lastName}`);
+          updatedAvailability[spec.id] = false;
+          continue;
+        }
+
+        const slotsData = await slotsResponse.json();
+        updatedAvailability[spec.id] = slotsData.availableSlots && slotsData.availableSlots.length > 0;
+      }
+
+      setDoctorsAvailability(updatedAvailability);
+      setAllSpecialists(fetchedSpecialists);
+    } catch (error) {
+      console.error("Failed to fetch all specialists:", error);
+    }
+  };
+
+  // Fetch specialties comparison data
+  const fetchSpecialtiesComparison = async () => {
+    try {
+      if (!token) {
+        throw new Error("Authentication token is missing.");
+      }
+
+      const response = await fetch("https://wellbeingproject.onrender.com/api/admin/specialtiesComparison", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const specialties = data.specialtiesData[0];
+
+      const arabicNames = {
+        psychologicalDisordersPercentage: "اضطرابات نفسية",
+        mentalHealthPercentage: "صحة نفسية",
+        physicalHealthPercentage: "صحة جسدية",
+        skillDevelopmentPercentage: "تطوير مهارات",
+      };
+
+      const transformedData = Object.entries(specialties).map(([key, value], index) => ({
+        name: arabicNames[key] || "غير معروف",
+        value: parseFloat(value),
+        color: ["#1F77BC", "#B2CEF2", "#4D83AE", "#FFBB28", "#FF8042"][index % 5],
+      }));
+
+      setSpecialtiesData(transformedData);
+    } catch (error) {
+      console.error("Error fetching specialties comparison data:", error);
+    }
+  };
+
+  // Fetch new specialists
+  const fetchNewSpecialists = async () => {
+    try {
+      if (!token) {
+        throw new Error("Authentication token is missing.");
+      }
+
+      const response = await fetch("https://wellbeingproject.onrender.com/api/admin/unConfirmed", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        alert("Session expired. Please log in again.");
+        window.location.href = "/login";
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const fetchedNewSpecialists = data.data.map((spec) => ({
+        firstName: spec.firstName,
+        lastName: spec.lastName,
+        work: spec.work,
+        email: spec.email,
+        language: spec.language,
+        sessionPrice: spec.sessionPrice,
+        sessionCount: spec.sessions.length,
+        yearsExperience: spec.yearsExperience,
+        isAvailable: spec.isAvailable,
+        files: spec.files,
+        workAddress: spec.workAddress,
+        homeAddress: spec.homeAddress,
+        phone: spec.phone,
+        imageUrl: spec.imageUrl || Avatar,
+        bio: spec.bio,
+        nationality: spec.nationality,
+        specialties: spec.specialties,
+        sessionDuration: spec.sessionDuration,
+        availableSlots: spec.availableSlots,
+        sessions: spec.sessions,
+        id: spec._id,
+        gender: spec.gender,
+      }));
+      setNewSpecialists(fetchedNewSpecialists);
+    } catch (error) {
+      console.error("Failed to fetch new specialists:", error);
+    }
+  };
+
+  // Fetch attendance data
+  const fetchAttendanceData = async () => {
+    try {
+      if (!token) {
+        throw new Error("Authentication token is missing.");
+      }
+
+      const response = await fetch("https://wellbeingproject.onrender.com/api/admin/specialistsAttendanceRate", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const attendanceRates = data.attendanceData.map((item) => parseFloat(item.attendanceRate.replace("%", ""))) || [];
+      const overallAttendanceRate = attendanceRates.reduce((sum, rate) => sum + rate, 0) / attendanceRates.length || 0;
+
+      setAttendanceData([
+        { name: "الحضور", value: overallAttendanceRate, color: "#1F77BC" },
+        { name: "الغياب", value: 100 - overallAttendanceRate, color: "#B2CEF2" },
+      ]);
+    } catch (error) {
+      console.error("Failed to fetch attendance data:", error);
+    }
   };
 
   useEffect(() => {
-    // Fetch most booked specialists (requires token)
-    const fetchMostBooked = async () => {
-      try {
-        if (!token) {
-          throw new Error("Authentication token is missing.");
-        }
-
-        const response = await fetch("https://wellbeingproject.onrender.com/api/admin/topSpecialists", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.status === 401) {
-          alert("Session expired. Please log in again.");
-          window.location.href = "/login";
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const fetchedMostBooked = data.data.map((spec) => ({
-          firstName: spec.firstName,
-          lastName: spec.lastName,
-          work: spec.work,
-          email: spec.email,
-          sessionPrice: spec.sessionPrice,
-          sessionCount: spec.sessions.length,
-          yearsExperience: spec.yearsExperience,
-          isAvailable: spec.isAvailable,
-          files: spec.files,
-          workAddress: spec.workAddress,
-          homeAddress: spec.homeAddress,
-          phone: spec.phone,
-          imageUrl: spec.imageUrl || Avatar,
-          language: spec.language,
-          bio: spec.bio,
-          nationality: spec.nationality,
-          specialties: spec.specialties,
-          sessionDuration: spec.sessionDuration,
-          availableSlots: spec.availableSlots,
-          sessions: spec.sessions,
-          id: spec._id,
-          gender: spec.gender,
-        }));
-        setMostBooked(fetchedMostBooked);
-      } catch (error) {
-        console.error("Failed to fetch most booked specialists:", error);
-      }
-    };
-
-    // Fetch least booked specialists (requires token)
-    const fetchLeastBooked = async () => {
-      try {
-        if (!token) {
-          throw new Error("Authentication token is missing.");
-        }
-
-        const response = await fetch("https://wellbeingproject.onrender.com/api/admin/bottomSpecialists", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.status === 401) {
-          alert("Session expired. Please log in again.");
-          window.location.href = "/login";
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const fetchedLeastBooked = data.data.map((spec) => ({
-          firstName: spec.firstName,
-          lastName: spec.lastName,
-          work: spec.work,
-          email: spec.email,
-          sessionPrice: spec.sessionPrice,
-          sessionCount: spec.sessions.length,
-          yearsExperience: spec.yearsExperience,
-          isAvailable: spec.isAvailable,
-          files: spec.files,
-          workAddress: spec.workAddress,
-          homeAddress: spec.homeAddress,
-          phone: spec.phone,
-          imageUrl: spec.imageUrl || Avatar,
-          bio: spec.bio,
-          nationality: spec.nationality,
-          specialties: spec.specialties,
-          sessionDuration: spec.sessionDuration,
-          availableSlots: spec.availableSlots,
-          sessions: spec.sessions,
-          id: spec._id,
-          gender: spec.gender,
-        }));
-        setLeastBooked(fetchedLeastBooked);
-      } catch (error) {
-        console.error("Failed to fetch least booked specialists:", error);
-      }
-    };
-
-    // Fetch all specialists (does not require token)
-    const fetchAllSpecialists = async () => {
-      try {
-        const response = await fetch("https://wellbeingproject.onrender.com/api/specialist/getAll", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (response.status === 401) {
-          alert("Session expired. Please log in again.");
-          window.location.href = "/login";
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const fetchedSpecialists = data.data.map((spec) => ({
-          firstName: spec.firstName,
-          lastName: spec.lastName,
-          work: spec.work,
-          email: spec.email,
-          sessionPrice: spec.sessionPrice,
-          sessionCount: spec.sessions.length,
-          yearsExperience: spec.yearsExperience,
-          isAvailable: spec.isAvailable,
-          files: spec.files,
-          workAddress: spec.workAddress,
-          homeAddress: spec.homeAddress,
-          phone: spec.phone,
-          imageUrl: spec.imageUrl || Avatar,
-          bio: spec.bio,
-          nationality: spec.nationality,
-          specialties: spec.specialties,
-          sessionDuration: spec.sessionDuration,
-          availableSlots: spec.availableSlots,
-          sessions: spec.sessions,
-          id: spec._id,
-          gender: spec.gender,
-        }));
-
-        // Fetch available slots for each specialist and update availability
-        const updatedAvailability = {};
-        for (const spec of fetchedSpecialists) {
-          const slotsResponse = await fetch(
-            `https://wellbeingproject.onrender.com/api/admin/availableSlots/${spec.id}`,
-            {
-              method: "GET",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-
-          if (!slotsResponse.ok) {
-            console.error(`Failed to fetch slots for ${spec.firstName} ${spec.lastName}`);
-            updatedAvailability[spec.id] = false;
-            continue;
-          }
-
-          const slotsData = await slotsResponse.json();
-          updatedAvailability[spec.id] = slotsData.availableSlots && slotsData.availableSlots.length > 0;
-        }
-
-        setDoctorsAvailability(updatedAvailability);
-        setAllSpecialists(fetchedSpecialists);
-      } catch (error) {
-        console.error("Failed to fetch all specialists:", error);
-      }
-    };
-
-    // Fetch specialties comparison data (requires token)
-    const fetchSpecialtiesComparison = async () => {
-      try {
-        if (!token) {
-          throw new Error("Authentication token is missing.");
-        }
-
-        const response = await fetch("https://wellbeingproject.onrender.com/api/admin/specialtiesComparison", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.status === 401) {
-          alert("Session expired. Please log in again.");
-          window.location.href = "/login";
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const specialties = data.specialtiesData[0];
-
-        const arabicNames = {
-          psychologicalDisordersPercentage: "اضطرابات نفسية",
-          mentalHealthPercentage: "صحة نفسية",
-          physicalHealthPercentage: "صحة جسدية",
-          skillDevelopmentPercentage: "تطوير مهارات",
-        };
-
-        const transformedData = Object.entries(specialties).map(([key, value], index) => ({
-          name: arabicNames[key] || "غير معروف",
-          value: parseFloat(value),
-          color: ["#1F77BC", "#B2CEF2", "#4D83AE", "#FFBB28", "#FF8042"][index % 5],
-        }));
-
-        setSpecialtiesData(transformedData);
-      } catch (error) {
-        console.error("Error fetching specialties comparison data:", error);
-      }
-    };
-
-    const fetchNewSpecialists = async () => {
-      try {
-        if (!token) {
-          throw new Error("Authentication token is missing.");
-        }
-
-        const response = await fetch("https://wellbeingproject.onrender.com/api/admin/unConfirmed", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (response.status === 401) {
-          alert("Session expired. Please log in again.");
-          window.location.href = "/login";
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const fetchedNewSpecialists = data.data.map((spec) => ({
-          firstName: spec.firstName,
-          lastName: spec.lastName,
-          work: spec.work,
-          email: spec.email,
-          language: spec.language,
-          sessionPrice: spec.sessionPrice,
-          sessionCount: spec.sessions.length,
-          yearsExperience: spec.yearsExperience,
-          isAvailable: spec.isAvailable,
-          files: spec.files,
-          workAddress: spec.workAddress,
-          homeAddress: spec.homeAddress,
-          phone: spec.phone,
-          imageUrl: spec.imageUrl || Avatar,
-          bio: spec.bio,
-          nationality: spec.nationality,
-          specialties: spec.specialties,
-          sessionDuration: spec.sessionDuration,
-          availableSlots: spec.availableSlots,
-          sessions: spec.sessions,
-          id: spec._id,
-          gender: spec.gender,
-        }));
-        setNewSpecialists(fetchedNewSpecialists);
-      } catch (error) {
-        console.error("Failed to fetch new specialists:", error);
-      }
-    };
-
-    const fetchAttendanceData = async () => {
-      try {
-        if (!token) {
-          throw new Error("Authentication token is missing.");
-        }
-
-        const response = await fetch("https://wellbeingproject.onrender.com/api/admin/specialistsAttendanceRate", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const attendanceRates = data.attendanceData.map((item) => parseFloat(item.attendanceRate.replace("%", ""))) || [];
-        const overallAttendanceRate = attendanceRates.reduce((sum, rate) => sum + rate, 0) / attendanceRates.length || 0;
-
-        setAttendanceData([
-          { name: "الحضور", value: overallAttendanceRate, color: "#1F77BC" },
-          { name: "الغياب", value: 100 - overallAttendanceRate, color: "#B2CEF2" },
-        ]);
-      } catch (error) {
-        console.error("Failed to fetch attendance data:", error);
-      }
-    };
-
     fetchMostBooked();
     fetchLeastBooked();
     fetchAllSpecialists();
@@ -876,144 +907,142 @@ export default function Dashboard() {
       )}
 
       {/* Metrics Section */}
-<div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
-  {/* Pie Chart - Specialties Comparison */}
-  <Card className="p-2 sm:p-4 text-center col-span-2">
-    <h3 className="font-bold mb-2 text-sm sm:text-base">مقارنة التخصصات</h3>
-    <div className="w-full h-[150px] sm:h-[200px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={specialtiesData}
-            dataKey="value"
-            cx="50%"
-            cy="50%"
-            outerRadius={60} // Smaller radius for mobile
-            label={({ value, x, y }) => (
-              <text
-                x={x}
-                y={y}
-                fill="gray"
-                textAnchor="middle"
-                dominantBaseline="central"
-                style={{ fontSize: "10px", fontWeight: "bold" }} // Smaller font for mobile
-              >
-                {`${value.toFixed(2)}%`}
-              </text>
-            )}
-            paddingAngle={2}
-          >
-            {specialtiesData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-          <Legend
-            layout="horizontal"
-            align="center"
-            verticalAlign="bottom"
-            iconType="circle"
-            wrapperStyle={{
-              paddingTop: "10px",
-              fontSize: "10px", // Smaller legend font for mobile
-            }}
-            formatter={(name) => name}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-  </Card>
-
-  {/* Pie Chart - Attendance Rate (Donut Chart) */}
-  <Card className="p-2 sm:p-4 text-center col-span-2 xl:col-span-1">
-    <h3 className="font-bold mb-2 text-sm sm:text-base">معدل الحضور</h3>
-    <div className="w-full h-[150px] sm:h-[200px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={attendanceData}
-            dataKey="value"
-            cx="50%"
-            cy="50%"
-            innerRadius={20} // Smaller inner radius for mobile
-            outerRadius={40} // Smaller outer radius for mobile
-            label={({ value, x, y }) => (
-              <text
-                x={x}
-                y={y}
-                fill="gray"
-                textAnchor="middle"
-                dominantBaseline="vertical"
-                style={{ fontSize: "10px", fontWeight: "bold" }} // Smaller font for mobile
-              >
-                {`${value.toFixed(2)}%`}
-              </text>
-            )}
-          >
-            {attendanceData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Pie>
-          <Legend
-            layout="horizontal"
-            align="right"
-            verticalAlign="bottom"
-            iconType="circle"
-            wrapperStyle={{
-              paddingLeft: "10px",
-              fontSize: "10px", // Smaller legend font for mobile
-            }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-  </Card>
-
-  {/* New Specialists */}
-  <Card className="p-2 sm:p-4 text-center col-span-2 xl:col-span-2 flex flex-col justify-center max-h-[260px]">
-    <h3 className="font-bold text-lg mb-2">المتخصصين الجدد</h3>
-    <div className="grid grid-cols-1 gap-2 sm:gap-4">
-      {newSpecialists.map((spec, index) => (
-        <div
-          key={index}
-          className="p-2 sm:p-4 border rounded-[20px] flex flex-col sm:flex-row items-center justify-between cursor-pointer"
-          onClick={() => handleNewSpecialistClick(spec)}
-        >
-          
-          <img
-            src={spec.imageUrl || Avatar}
-            alt="Avatar"
-            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full mb-2 sm:mb-0"
-          />
-          <div className="text-center sm:text-right">
-            <p className="text-xs sm:text-sm">الاسم: {spec.firstName} {spec.lastName}</p>
-            <p className="text-xs sm:text-sm">النوع: {spec.work}</p>
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+        {/* Pie Chart - Specialties Comparison */}
+        <Card className="p-2 sm:p-4 text-center col-span-2">
+          <h3 className="font-bold mb-2 text-sm sm:text-base">مقارنة التخصصات</h3>
+          <div className="w-full h-[150px] sm:h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={specialtiesData}
+                  dataKey="value"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={60} // Smaller radius for mobile
+                  label={({ value, x, y }) => (
+                    <text
+                      x={x}
+                      y={y}
+                      fill="gray"
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      style={{ fontSize: "10px", fontWeight: "bold" }} // Smaller font for mobile
+                    >
+                      {`${value.toFixed(2)}%`}
+                    </text>
+                  )}
+                  paddingAngle={2}
+                >
+                  {specialtiesData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Legend
+                  layout="horizontal"
+                  align="center"
+                  verticalAlign="bottom"
+                  iconType="circle"
+                  wrapperStyle={{
+                    paddingTop: "10px",
+                    fontSize: "10px", // Smaller legend font for mobile
+                  }}
+                  formatter={(name) => name}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
-          <div className="flex gap-1 sm:gap-2 mt-2 sm:mt-0">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedSpecialistId(spec.id);
-                setIsConfirming(true);
-              }}
-              className="bg-transparent text-[#1F77BC] border-2 border-[#1F77BC] hover:bg-[#B2CEF2] px-2 py-1 rounded-[20px] text-xs"
-            >
-              رفض
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleAcceptSpecialist(spec.id);
-              }}
-              className="bg-transparent text-[#1F77BC] border-2 border-[#1F77BC] hover:bg-[#B2CEF2] px-2 py-1 rounded-[20px] text-xs"
-            >
-              قبول
-            </button>
+        </Card>
+
+        {/* Pie Chart - Attendance Rate (Donut Chart) */}
+        <Card className="p-2 sm:p-4 text-center col-span-2 xl:col-span-1">
+          <h3 className="font-bold mb-2 text-sm sm:text-base">معدل الحضور</h3>
+          <div className="w-full h-[150px] sm:h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={attendanceData}
+                  dataKey="value"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={20} // Smaller inner radius for mobile
+                  outerRadius={40} // Smaller outer radius for mobile
+                  label={({ value, x, y }) => (
+                    <text
+                      x={x}
+                      y={y}
+                      fill="gray"
+                      textAnchor="middle"
+                      dominantBaseline="vertical"
+                      style={{ fontSize: "10px", fontWeight: "bold" }} // Smaller font for mobile
+                    >
+                      {`${value.toFixed(2)}%`}
+                    </text>
+                  )}
+                >
+                  {attendanceData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Legend
+                  layout="horizontal"
+                  align="right"
+                  verticalAlign="bottom"
+                  iconType="circle"
+                  wrapperStyle={{
+                    paddingLeft: "10px",
+                    fontSize: "10px", // Smaller legend font for mobile
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           </div>
-        </div>
-      ))}
-    </div>
-  </Card>
-</div>
+        </Card>
+
+        {/* New Specialists */}
+        <Card className="p-2 sm:p-4 text-center col-span-2 xl:col-span-2 flex flex-col justify-center max-h-[260px]">
+          <h3 className="font-bold text-lg mb-2">المتخصصين الجدد</h3>
+          <div className="grid grid-cols-1 gap-2 sm:gap-4">
+            {newSpecialists.map((spec, index) => (
+              <div
+                key={index}
+                className="p-2 sm:p-4 border rounded-[20px] flex flex-col sm:flex-row items-center justify-between cursor-pointer"
+                onClick={() => handleNewSpecialistClick(spec)}
+              >
+                <img
+                  src={spec.imageUrl || Avatar}
+                  alt="Avatar"
+                  className="w-10 h-10 sm:w-12 sm:h-12 rounded-full mb-2 sm:mb-0"
+                />
+                <div className="text-center sm:text-right">
+                  <p className="text-xs sm:text-sm">الاسم: {spec.firstName} {spec.lastName}</p>
+                  <p className="text-xs sm:text-sm">النوع: {spec.work}</p>
+                </div>
+                <div className="flex gap-1 sm:gap-2 mt-2 sm:mt-0">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRejectSpecialist(spec.id);
+                    }}
+                    className="bg-transparent text-[#1F77BC] border-2 border-[#1F77BC] hover:bg-[#B2CEF2] px-2 py-1 rounded-[20px] text-xs"
+                  >
+                    رفض
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAcceptSpecialist(spec.id);
+                    }}
+                    className="bg-transparent text-[#1F77BC] border-2 border-[#1F77BC] hover:bg-[#B2CEF2] px-2 py-1 rounded-[20px] text-xs"
+                  >
+                    قبول
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
 
       {/* Specialists Sections */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1081,28 +1110,21 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      {/* Confirmation Dialog */}
-      {isConfirming && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-2xl shadow-md text-center">
-            <h2 className="text-xl font-bold mb-4">هل أنت متأكد من رفض الأخصائي؟</h2>
-            <div className="flex justify-center gap-4">
-              <button
-                onClick={confirmRejection}
-                className="bg-transparent text-[#1F77BC] border-2 border-[#1F77BC] hover:bg-[#B2CEF2] px-3 py-1 rounded-[20px] text-lg"
-              >
-                نعم
-              </button>
-              <button
-                onClick={() => setIsConfirming(false)}
-                className="bg-transparent text-[#1F77BC] border-2 border-[#1F77BC] hover:bg-[#B2CEF2] px-3 py-1 rounded-[20px] text-lg"
-              >
-                إلغاء
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Confirmation Dialog for Acceptance */}
+      <ConfirmationDialog
+        isOpen={isConfirmingAccept}
+        onClose={() => setIsConfirmingAccept(false)}
+        onConfirm={confirmAcceptance}
+        message="هل أنت متأكد من قبول الأخصائي؟"
+      />
+
+      {/* Confirmation Dialog for Rejection */}
+      <ConfirmationDialog
+        isOpen={isConfirmingReject}
+        onClose={() => setIsConfirmingReject(false)}
+        onConfirm={confirmRejection}
+        message="هل أنت متأكد من رفض الأخصائي؟"
+      />
     </div>
   );
 }

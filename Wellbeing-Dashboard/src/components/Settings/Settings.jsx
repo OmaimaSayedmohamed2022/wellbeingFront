@@ -247,6 +247,8 @@ const Settings = () => {
       physicalHealth: [],
       skillsDevelopment: [],
     },
+    isAvailable: false, // Default value
+    sessions: [], // Default value
   });
 
   const [showBeneficiaryForm, setShowBeneficiaryForm] = useState(false);
@@ -467,11 +469,10 @@ const Settings = () => {
 
   // State for file uploads
   const [idOrPassportFile, setIdOrPassportFile] = useState(null);
-  const [resumeFile, setResumeFile] = useState(null);
-  const [certificatesFiles, setCertificatesFiles] = useState([]);
-  const [ministryLicenseFiles, setMinistryLicenseFiles] = useState([]);
-  const [associationMembershipFile, setAssociationMembershipFile] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+const [resumeFile, setResumeFile] = useState(null);
+const [certificatesFiles, setCertificatesFiles] = useState([]);
+const [ministryLicenseFile, setMinistryLicenseFile] = useState(null);
+const [associationMembershipFile, setAssociationMembershipFile] = useState(null);
 
   // Specialties options with Arabic titles
   const specialtiesOptions = {
@@ -590,55 +591,88 @@ const Settings = () => {
   const handleBeneficiarySubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true); // Disable the submit button
-
+  
     // Check if password and confirm password match
     if (beneficiaryFormData.password !== beneficiaryFormData.confirmPassword) {
       toast.error("كلمة المرور وتأكيدها غير متطابقين.");
+      setIsSubmitting(false);
       return;
     }
-
+  
     // Map Arabic gender to English
     const genderMap = {
       "ذكر": "male",
       "أنثى": "female",
     };
-
+  
+    // Prepare the payload
     const formData = {
-      ...beneficiaryFormData,
+      firstName: beneficiaryFormData.firstName,
+      lastName: beneficiaryFormData.lastName,
+      email: beneficiaryFormData.email,
+      password: beneficiaryFormData.password,
+      phone: beneficiaryFormData.phone,
+      profession: beneficiaryFormData.profession,
+      homeAddress: beneficiaryFormData.homeAddress,
+      age: parseInt(beneficiaryFormData.age, 10), // Ensure age is a number
+      region: beneficiaryFormData.region,
+      nationality: beneficiaryFormData.nationality,
       gender: genderMap[beneficiaryFormData.gender] || beneficiaryFormData.gender,
     };
-
+  
     try {
-      const response = await fetch("https://wellbeingproject.onrender.com/api/beneficiaries/register/beneficiary", {
+      const response = await fetch("https://scopey.onrender.com/api/beneficiaries/register/beneficiary", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
       });
-
-      // Log the response for debugging
-      console.log("Response:", response);
-
+  
       const data = await response.json();
-      console.log("Response Data:", data);
-
+  
       if (response.ok) {
+        // Success case
         toast.success("تم إضافة المستفيد بنجاح!");
-        setShowBeneficiaryForm(false);
-
-        // Save the token to localStorage
-        localStorage.setItem("token", data.token);
-
-        // Refetch beneficiaries to update the list
-        fetchBeneficiaries();
+        setShowBeneficiaryForm(false); // Close the form modal
+        setBeneficiaryFormData({
+          firstName: "",
+          lastName: "",
+          email: "",
+          password: "",
+          confirmPassword: "",
+          phone: "",
+          profession: "",
+          homeAddress: "",
+          age: "",
+          region: "",
+          nationality: "",
+          gender: "",
+        }); // Reset form fields
+        fetchBeneficiaries(); // Refetch beneficiaries to update the list
       } else {
         // Handle backend errors
-        toast.error(data.error || "فشل إضافة المستفيد. يرجى المحاولة مرة أخرى.");
+        if (data.errors && Array.isArray(data.errors)) {
+          // Display each error message from the backend
+          data.errors.forEach((error) => {
+            toast.error(error.msg || "حدث خطأ أثناء معالجة الطلب.");
+          });
+        } else if (data.message) {
+          // If the backend returns a single error message
+          toast.error(data.message || "فشل إضافة المستفيد. يرجى المحاولة مرة أخرى.");
+        } else {
+          // Generic error fallback
+          toast.error("حدث خطأ غير متوقع. يرجى المحاولة لاحقًا.");
+        }
       }
     } catch (error) {
+      // Log the full error for debugging
       console.error("Error submitting beneficiary form:", error);
-      toast.error("حدث خطأ. يرجى المحاولة مرة أخرى لاحقًا.");
+  
+      // Display a generic error message
+      toast.error("حدث خطأ أثناء معالجة الطلب. يرجى المحاولة لاحقًا.");
+    } finally {
+      setIsSubmitting(false); // Re-enable the submit button
     }
   };
 
@@ -734,54 +768,56 @@ const Settings = () => {
     setUpdateSpecialistData({ ...updateSpecialistData, specialties: updatedSpecialties });
   };
 
-  // Handle file changes
-  const handleFileChange = (e, setFileFunction) => {
-    setFileFunction(e.target.files[0]);
-  };
+  // State for file uploads
 
-  // Handle multiple file changes (e.g., certificates)
-  const handleMultipleFilesChange = (e, setFilesFunction) => {
-    setFilesFunction([...e.target.files]);
-  };
+
+// Handle single file changes
+const handleFileChange = (e, setFileFunction) => {
+  const file = e.target.files[0];
+  setFileFunction(file);
+};
+
+// Handle multiple file changes
+const handleMultipleFilesChange = (e, setFilesFunction) => {
+  const files = Array.from(e.target.files);
+  setFilesFunction(files);
+};
 
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+  
     // Create FormData object
     const data = new FormData();
-
-    // Append form data
-    for (const key in formData) {
+  
+    // Append text fields
+    Object.keys(formData).forEach((key) => {
       if (key === "specialties") {
         data.append(key, JSON.stringify(formData[key])); // Convert specialties to JSON
       } else {
         data.append(key, formData[key]);
       }
-    }
-
+    });
+  
     // Append files
     if (idOrPassportFile) data.append("idOrPassport", idOrPassportFile);
     if (resumeFile) data.append("resume", resumeFile);
     if (certificatesFiles.length > 0) {
       certificatesFiles.forEach((file) => {
-        data.append(`certificates`, file);
+        data.append("certificates", file);
       });
     }
-    if (ministryLicenseFiles.length > 0) {
-      ministryLicenseFiles.forEach((file) => {
-        data.append(`ministryLicenses`, file);
-      });
-    }
+    if (ministryLicenseFile) data.append("ministryLicense", ministryLicenseFile);
     if (associationMembershipFile) data.append("associationMembership", associationMembershipFile);
-
+  
     try {
       const response = await fetch("https://wellbeingproject.onrender.com/api/specialist/register", {
         method: "POST",
-        body: data,
+        body: data, // Send FormData directly
       });
-
+  
       if (response.ok) {
+        const responseData = await response.json();
         toast.success("تم إرسال النموذج بنجاح!");
         setShowSpecialistForm(false); // Close the form after submission
       } else {
@@ -1794,15 +1830,26 @@ const Settings = () => {
             className="p-2 border border-gray-300 rounded-md"
             required
           />
-          <input
-            type="text"
-            name="nationality"
-            placeholder="الجنسية"
-            value={updateSpecialistData.nationality}
-            onChange={handleUpdateSpecialistInputChange}
-            className="p-2 border border-gray-300 rounded-md"
-            required
-          />
+          {/* Nationality */}
+<div>
+  <label htmlFor="nationality" className="block mb-2 text-sm font-semibold">
+    
+  </label>
+  <select
+    name="nationality"
+    value={updateSpecialistData.nationality}
+    onChange={handleUpdateSpecialistInputChange}
+    className="w-full p-2 border border-gray-300 rounded-md bg-[#D9D9D9]"
+    required
+  >
+    <option value="">اختر الجنسية</option>
+    {Object.keys(countryCodeMap).map((country) => (
+      <option key={country} value={country}>
+        {country}
+      </option>
+    ))}
+  </select>
+</div>
         </div>
 
         {/* Work Information */}
@@ -1925,210 +1972,214 @@ const Settings = () => {
           <Card className="w-full max-w-4xl p-6 overflow-y-auto max-h-[90vh]">
             <h2 className="text-lg font-bold mb-4">إضافة أخصائي جديد</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Personal Information */}
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  name="firstName"
-                  placeholder="الاسم الأول"
-                  value={formData.firstName}
-                  onChange={handleInputChange}
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="text"
-                  name="lastName"
-                  placeholder="الاسم الأخير"
-                  value={formData.lastName}
-                  onChange={handleInputChange}
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="البريد الإلكتروني"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="password"
-                  name="password"
-                  placeholder="كلمة المرور"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="text"
-                  name="phone"
-                  placeholder="رقم الهاتف"
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="text"
-                  name="nationality"
-                  placeholder="الجنسية"
-                  value={formData.nationality}
-                  onChange={handleInputChange}
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-              </div>
+  {/* Personal Information */}
+  <div className="grid grid-cols-2 gap-4">
+    <input
+      type="text"
+      name="firstName"
+      placeholder="الاسم الأول"
+      value={formData.firstName}
+      onChange={handleInputChange}
+      className="p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <input
+      type="text"
+      name="lastName"
+      placeholder="الاسم الأخير"
+      value={formData.lastName}
+      onChange={handleInputChange}
+      className="p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <input
+      type="email"
+      name="email"
+      placeholder="البريد الإلكتروني"
+      value={formData.email}
+      onChange={handleInputChange}
+      className="p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <input
+      type="password"
+      name="password"
+      placeholder="كلمة المرور"
+      value={formData.password}
+      onChange={handleInputChange}
+      className="p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <input
+      type="text"
+      name="phone"
+      placeholder="رقم الهاتف"
+      value={formData.phone}
+      onChange={handleInputChange}
+      className="p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <select
+      name="nationality"
+      value={formData.nationality}
+      onChange={handleInputChange}
+      className="w-full p-2 border border-gray-300 rounded-md bg-[#D9D9D9]"
+      required
+    >
+      <option value="">اختر الجنسية</option>
+      {Object.keys(countryCodeMap).map((country) => (
+        <option key={country} value={country}>
+          {country}
+        </option>
+      ))}
+    </select>
+  </div>
 
-              {/* Work Information */}
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  name="work"
-                  placeholder="المهنة"
-                  value={formData.work}
-                  onChange={handleInputChange}
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="text"
-                  name="workAddress"
-                  placeholder="عنوان العمل"
-                  value={formData.workAddress}
-                  onChange={handleInputChange}
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="text"
-                  name="homeAddress"
-                  placeholder="عنوان المنزل"
-                  value={formData.homeAddress}
-                  onChange={handleInputChange}
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-              </div>
+  {/* Work Information */}
+  <div className="grid grid-cols-2 gap-4">
+    <input
+      type="text"
+      name="work"
+      placeholder="المهنة"
+      value={formData.work}
+      onChange={handleInputChange}
+      className="p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <input
+      type="text"
+      name="workAddress"
+      placeholder="عنوان العمل"
+      value={formData.workAddress}
+      onChange={handleInputChange}
+      className="p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <input
+      type="text"
+      name="homeAddress"
+      placeholder="عنوان المنزل"
+      value={formData.homeAddress}
+      onChange={handleInputChange}
+      className="p-2 border border-gray-300 rounded-md"
+      required
+    />
+  </div>
 
-              {/* Bio */}
-              <textarea
-                name="bio"
-                placeholder="نبذة عنك"
-                value={formData.bio}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md"
-                rows="4"
+  {/* Bio */}
+  <textarea
+    name="bio"
+    placeholder="نبذة عنك"
+    value={formData.bio}
+    onChange={handleInputChange}
+    className="w-full p-2 border border-gray-300 rounded-md"
+    rows="4"
+  />
+
+  {/* Session Information */}
+  <div className="grid grid-cols-2 gap-4">
+    <input
+      type="number"
+      name="sessionPrice"
+      placeholder="سعر الجلسة"
+      value={formData.sessionPrice}
+      onChange={handleInputChange}
+      className="p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <input
+      type="number"
+      name="yearsExperience"
+      placeholder="سنوات الخبرة"
+      value={formData.yearsExperience}
+      onChange={handleInputChange}
+      className="p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <input
+      type="number"
+      name="sessionDuration"
+      placeholder="مدة الجلسة (بالدقائق)"
+      value={formData.sessionDuration}
+      onChange={handleInputChange}
+      className="p-2 border border-gray-300 rounded-md"
+      required
+    />
+  </div>
+
+  {/* Specialties Section */}
+  <div className="space-y-4">
+    <h3 className="text-lg font-bold">التخصصات</h3>
+    {Object.entries(specialtiesOptions).map(([specialtyType, { title, options }]) => (
+      <div key={specialtyType} className="space-y-2">
+        <h4 className="font-medium">{title}</h4>
+        <div className="grid grid-cols-2 gap-4">
+          {options.map((option) => (
+            <label key={option} className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                value={option}
+                checked={formData.specialties[specialtyType].includes(option)}
+                onChange={(e) => handleSpecialtyChange(e, specialtyType)}
+                className="form-checkbox"
               />
+              <span>{option}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
 
-              {/* Session Information */}
-              <div className="grid grid-cols-2 gap-4">
-                <input
-                  type="number"
-                  name="sessionPrice"
-                  placeholder="سعر الجلسة"
-                  value={formData.sessionPrice}
-                  onChange={handleInputChange}
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="number"
-                  name="yearsExperience"
-                  placeholder="سنوات الخبرة"
-                  value={formData.yearsExperience}
-                  onChange={handleInputChange}
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="number"
-                  name="sessionDuration"
-                  placeholder="مدة الجلسة (بالدقائق)"
-                  value={formData.sessionDuration}
-                  onChange={handleInputChange}
-                  className="p-2 border border-gray-300 rounded-md"
-                  required
-                />
-              </div>
+  {/* File Uploads */}
+  <div className="space-y-4">
+    <input
+      type="file"
+      onChange={(e) => handleFileChange(e, setIdOrPassportFile)}
+      className="w-full p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <input
+      type="file"
+      onChange={(e) => handleFileChange(e, setResumeFile)}
+      className="w-full p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <input
+      type="file"
+      multiple
+      onChange={(e) => handleMultipleFilesChange(e, setCertificatesFiles)}
+      className="w-full p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <input
+      type="file"
+      onChange={(e) => handleFileChange(e, setMinistryLicenseFile)}
+      className="w-full p-2 border border-gray-300 rounded-md"
+      required
+    />
+    <input
+      type="file"
+      onChange={(e) => handleFileChange(e, setAssociationMembershipFile)}
+      className="w-full p-2 border border-gray-300 rounded-md"
+      required
+    />
+  </div>
 
-              {/* Specialties Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-bold">التخصصات</h3>
-                {Object.entries(specialtiesOptions).map(([specialtyType, { title, options }]) => (
-                  <div key={specialtyType} className="space-y-2">
-                    <h4 className="font-medium">{title}</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      {options.map((option) => (
-                        <label key={option} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            value={option}
-                            checked={formData.specialties[specialtyType].includes(option)}
-                            onChange={(e) => handleSpecialtyChange(e, specialtyType)}
-                            className="form-checkbox"
-                          />
-                          <span>{option}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* File Uploads */}
-              <div className="space-y-4">
-                <input
-                  type="file"
-                  onChange={(e) => handleFileChange(e, setIdOrPassportFile)}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="file"
-                  onChange={(e) => handleFileChange(e, setResumeFile)}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="file"
-                  multiple
-                  onChange={(e) => handleMultipleFilesChange(e, setCertificatesFiles)}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="file"
-                  multiple
-                  onChange={(e) => handleMultipleFilesChange(e, setMinistryLicenseFiles)}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  required
-                />
-                <input
-                  type="file"
-                  onChange={(e) => handleFileChange(e, setAssociationMembershipFile)}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  required
-                />
-              </div>
-
-              {/* Submit and Cancel Buttons */}
-              <div className="flex justify-end gap-4">
-                <Button
-                  type="button"
-                  className="bg-gray-500 text-white p-2 rounded-md"
-                  onClick={() => setShowSpecialistForm(false)}
-                >
-                  إلغاء
-                </Button>
-                <Button type="submit" className="bg-[#1F77BC] text-white p-2 rounded-md">
-                  إرسال 
-                </Button>
-              </div>
-            </form>
+  {/* Submit and Cancel Buttons */}
+  <div className="flex justify-end gap-4">
+    <Button
+      type="button"
+      className="bg-gray-500 text-white p-2 rounded-md"
+      onClick={() => setShowSpecialistForm(false)}
+    >
+      إلغاء
+    </Button>
+    <Button type="submit" className="bg-[#1F77BC] text-white p-2 rounded-md">
+      إرسال
+    </Button>
+  </div>
+</form>
           </Card>
         </div>
       )}
